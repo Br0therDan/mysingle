@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "title": "마이싱글",
+    "description": "마이싱글, 비즈니스 전문가를 위한 올인원 도구",
+    "blogTitle": "블로그",
+    "pricingTitle": "가격",
+    "pricingDescription": "사용한 만큼 지불하세요",
+    "userTitle": "{userName}",
+    "userDescription": "{userName}의 마이싱글.",
+    "notFoundTitle": "찾을 수 없음"
+  },
+  "navbar": {
+    "home": "홈",
+    "blog": "블로그",
+    "signIn": "로그인",
+    "signOut": "로그아웃",
+    "pricing": "가격",
+    "profile": "프로필",
+    "generateTimes": "{points} 생성 횟수",
+    "billing": "결제",
+    "support": "지원",
+    "emailCopyDescription": "이메일 주소가 복사되었습니다"
+  },
+  "authenticate": {
+    "signInTitle": "로그인",
+    "signUpTitle": "가입",
+    "signUpGoogle": "Google로 가입",
+    "resetPasswordTitle": "비밀번호 재설정",
+    "updatePasswordTitle": "비밀번호 업데이트",
+    "email": "이메일",
+    "password": "비밀번호",
+    "forgetPassword": "비밀번호를 잊으셨나요?",
+    "signIn": "이메일로 계속",
+    "signInCode": "로그인 코드로 계속",
+    "resend": "재전송",
+    "resendIn": "{countdown} 초 후 재전송",
+    "loginCode": "로그인 코드",
+    "magicLink": "매직 링크로",
+    "dontHaveAccount": "계정이 아직 없으신가요?",
+    "signUp": "가입하기",
+    "withEmailAndPassword": "이메일과 비밀번호로",
+    "sendEmail": "이메일 전송",
+    "newPassword": "새 비밀번호",
+    "confirmNewPassword": "새 비밀번호 확인",
+    "updatePassword": "비밀번호 업데이트",
+    "alreadyHaveAccount": "이미 계정이 있으신가요?"
+  },
+  "index": {
+    "plan": {
+      "title": "사용한 만큼 지불",
+      "description": "새 버전을 잠금 해제하세요.",
+      "upgradeNormalTitle": "생성 횟수 부족",
+      "upgradeNormalDescription": "계정에 더 많은 횟수를 추가하세요, 사용한 만큼 지불",
+      "upgradeDownloadTitle": "무제한 다운로드를 위해 업그레이드",
+      "upgradeDownloadDescription": "계정에 더 많은 횟수를 추가하세요, 사용한 만큼 지불",
+      "upgradePrivateTitle": "프라이빗을 위해 업그레이드",
+      "upgradePrivateDescription": "계정에 더 많은 횟수를 추가하세요, 사용한 만큼 지불",
+      "plan1": {
+        "title": "무료",
+        "description": "일회성 결제",
+        "buttonText": "시작하기",
+        "text1": "10회 생성 가능",
+        "text2": "무료 체험",
+        "text3": "손실 없는 음질",
+        "text4": "무제한 다운로드",
+        "text5": "프라이빗",
+        "text6": "24×7 이메일 지원"
+      },
+      "plan2": {
+        "title": "프리미엄",
+        "description": "일회성 결제",
+        "buttonText": "시작하기",
+        "text1": "1000회 생성 가능",
+        "text2": "회당 $0.01",
+        "text3": "손실 없는 음질",
+        "text4": "무제한 다운로드",
+        "text5": "프라이빗",
+        "text6": "24×7 이메일 지원",
+        "text7": "1년 동안 사용 가능"
+      },
+      "plan3": {
+        "title": "베이직",
+        "description": "일회성 결제",
+        "buttonText": "시작하기",
+        "text1": "500회 생성 가능",
+        "text2": "회당 $0.02",
+        "text3": "손실 없는 음질",
+        "text4": "무제한 다운로드",
+        "text5": "프라이빗",
+        "text6": "24×7 이메일 지원",
+        "text7": "1년 동안 사용 가능"
+      }
+    },
+    "bottomDescription": {
+      "title": "무엇이든 노래로 만들어보세요",
+      "description": "지금 마이싱글을 사용해보세요. 신용카드는 필요 없습니다.",
+      "buttonText": "노래 만들기"
+    }
+  },
+  "user": {},
+  "blog": {
+    "notFoundTitle": "죄송합니다, 블로그를 찾을 수 없습니다.",
+    "notFoundDescription": "하지만 걱정하지 마세요, 홈 페이지에서 다른 것들을 찾으시거나 언어를 변경해보세요.",
+    "notFoundButtonText": "홈페이지로 돌아가기"
+  },
+  "notFound": {
+    "title": "무언가가 잘못되었습니다.",
+    "description": "죄송합니다, 페이지를 찾을 수 없습니다. 홈 페이지에서 다양한 것들을 탐색하실 수 있습니다.",
+    "buttonText": "홈페이지로 돌아가기"
+  },
+  "footer": {
+    "title": "마이싱글",
+    "company": "회사",
+    "about": "소개",
+    "legal": "법적 고지",
+    "termsOfService": "이용 약관",
+    "privacyPolicy": "개인정보 보호정책",
+    "contact": "연락처",
+    "contactUs": "문의하기"
+  }
+}

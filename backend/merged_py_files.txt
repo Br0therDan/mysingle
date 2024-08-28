@@ -1,0 +1,2048 @@
+
+
+# File: backend-sqlmodel/merge_py_files.py
+
+import os
+
+# .py 파일이 저장된 루트 디렉토리를 지정합니다.
+root_directory_path = os.getcwd()
+current_directory_name = os.path.basename(root_directory_path)
+
+# 결과를 저장할 파일 경로를 지정합니다.
+output_path = "merged_py_files.txt"
+
+# 모든 .py 파일을 재귀적으로 읽어오는 함수입니다.
+def get_all_py_files(dir_path):
+    py_files = []
+    for root, dirs, files in os.walk(dir_path):
+        # venv 폴더는 제외합니다.
+        dirs[:] = [d for d in dirs if d != '.venv']  # '.venv' 디렉토리를 제외합니다.
+        for file in files:
+            if file.endswith(".py"):
+                py_files.append(os.path.join(root, file))
+    return py_files
+
+# 모든 .py 파일의 경로를 가져옵니다.
+py_files = get_all_py_files(root_directory_path)
+
+if not py_files:
+    print("No .py files found.")
+else:
+    print(f"{len(py_files)} .py files found.")
+
+merged_code = ""
+
+# 모든 .py 파일의 내용을 읽어서 하나의 문자열로 합칩니다.
+for file in py_files:
+    try:
+        # 파일 경로를 현재 디렉토리 기준으로 상대 경로로 변환합니다.
+        relative_path = os.path.relpath(file, root_directory_path)
+        full_path_with_dir = os.path.join(current_directory_name, relative_path)
+        print(f"Reading file: {full_path_with_dir}")
+        
+        with open(file, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+            # 상대 경로와 현재 디렉토리명을 주석으로 추가합니다.
+            file_content_with_path = f"# File: {full_path_with_dir}\n\n{file_content}"  
+            merged_code += f"\n\n{file_content_with_path}"  # 파일 내용 추가
+    except Exception as e:
+        print(f"Error reading file {file}: {e}")
+
+# 합쳐진 코드를 출력 파일에 저장합니다.
+try:
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(merged_code)
+    print(f"Merged code written to {output_path}")
+except Exception as e:
+    print(f"Error writing to file {output_path}: {e}")
+
+
+# File: backend-sqlmodel/app/main.py
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+
+from app.api.v1.endpoints import accounts, daily_scrums, opportunities, projects, sprints, tasks, auth
+from app.core.config import settings
+from app.db.session import create_db_and_tables
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 애플리케이션이 시작될 때 실행할 코드
+    print("Application startup")
+    create_db_and_tables()  # 데이터베이스 테이블 생성
+    yield
+    # 애플리케이션이 종료될 때 실행할 코드
+    print("Application shutdown")
+
+# FastAPI 애플리케이션 초기화
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    description="API documentation for the project",
+    version=settings.VERSION,
+    lifespan=lifespan,
+)
+
+# CORS 미들웨어 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 보안을 위해 실제 배포 시에는 특정 도메인만 허용하는 것이 좋습니다.
+    allow_credentials=True,
+    allow_methods=["*"],  # 모든 HTTP 메서드 허용
+    allow_headers=["*"],  # 모든 HTTP 헤더 허용
+)
+
+# 라우터 등록
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(accounts.router, prefix="/accounts", tags=["Accounts"])
+app.include_router(daily_scrums.router, prefix="/daily-scrums", tags=["Daily Scrums"])
+app.include_router(opportunities.router, prefix="/opportunities", tags=["Opportunities"])
+app.include_router(projects.router, prefix="/projects", tags=["Projects"])
+app.include_router(sprints.router, prefix="/sprints", tags=["Sprints"])
+app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
+
+# 애플리케이션 구성 및 설정
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the FastAPI application!"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+
+
+# File: backend-sqlmodel/app/core/config.py
+
+from pydantic_settings import BaseSettings  # pydantic-settings에서 BaseSettings 가져오기
+from pydantic import AnyHttpUrl
+
+class Settings(BaseSettings):
+    APP_NAME: str
+    APP_ENV: str
+    APP_DEBUG: bool
+    APP_VERSION: str
+    LOG_LEVEL: str
+
+    # Database settings
+    DATABASE_URL: str
+
+    # CORS settings
+    CORS_ORIGINS: list[AnyHttpUrl] = []
+
+    # Auth0 settings
+    AUTH0_DOMAIN: str
+    AUTH0_API_AUDIENCE: str
+    AUTH0_ISSUER: str
+    AUTH0_ALGORITHMS: list[str]
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = 'utf-8'
+
+settings = Settings()
+
+
+# File: backend-sqlmodel/app/core/security.py
+
+import requests
+from jose import jwt, JWTError
+from app.core.config import settings
+
+ALGORITHM = "RS256"  # Auth0에서 사용하는 알고리즘
+
+def get_auth0_public_key():
+    """
+    Auth0의 JWK를 가져와서 공개 키로 변환하는 함수.
+    """
+    jwks_url = f"https://{settings.AUTH0_DOMAIN}/.well-known/jwks.json"
+    response = requests.get(jwks_url)
+    jwks = response.json()
+    return jwks
+
+def decode_access_token(token: str):
+    """
+    Auth0에서 발급한 JWT 토큰을 디코드하고 검증하는 함수.
+    """
+    try:
+        # Auth0에서 제공하는 JWK 가져오기
+        jwks = get_auth0_public_key()
+
+        # 토큰의 헤더에서 키 ID (kid) 추출
+        unverified_header = jwt.get_unverified_header(token)
+        rsa_key = {}
+        for key in jwks["keys"]:
+            if key["kid"] == unverified_header["kid"]:
+                rsa_key = {
+                    "kty": key["kty"],
+                    "kid": key["kid"],
+                    "use": key["use"],
+                    "n": key["n"],
+                    "e": key["e"]
+                }
+                break
+
+        if rsa_key:
+            payload = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=[ALGORITHM],
+                audience=settings.AUTH0_AUDIENCE,
+                issuer=f"https://{settings.AUTH0_DOMAIN}/"
+            )
+            return payload
+        else:
+            raise JWTError("Invalid token or key.")
+    except JWTError:
+        return None
+
+# TODO: 추가적인 검증 로직을 필요에 따라 구현
+
+
+# File: backend-sqlmodel/app/tests/test_f_auth.py
+
+# app/tests/test_auth.py
+
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+def test_login():
+    login_data = {"username": "testuser", "password": "testpassword"}
+    response = client.post("/login/", data=login_data)
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+
+def test_protected_route_without_token():
+    response = client.get("/protected-route/")
+    assert response.status_code == 401
+
+def test_protected_route_with_token():
+    login_data = {"username": "testuser", "password": "testpassword"}
+    login_response = client.post("/login/", data=login_data)
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.get("/protected-route/", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"message": "This is a protected route"}
+
+
+# File: backend-sqlmodel/app/tests/test_f_models.py
+
+# app/tests/test_models.py
+
+from app.models import Account
+from sqlmodel import SQLModel, create_engine, Session
+
+def test_account_model():
+    account = Account(account_name="Test Account", account_type="Customer")
+    assert account.account_name == "Test Account"
+    assert account.account_type == "Customer"
+
+def test_account_creation_in_db():
+    engine = create_engine("sqlite:///:memory:")
+    SQLModel.metadata.create_all(engine)
+    account = Account(account_name="Test Account", account_type="Customer")
+
+    with Session(engine) as session:
+        session.add(account)
+        session.commit()
+        session.refresh(account)
+        assert account.id is not None
+        assert account.account_name == "Test Account"
+
+
+# File: backend-sqlmodel/app/tests/test_e_sprint.py
+
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.schemas import SprintCreate
+
+client = TestClient(app)
+
+def test_create_sprint():
+    sprint_data = {
+        "sprint_name": "Sprint 1",
+        "project_id": "some-project-uuid",
+        "goal": "Complete initial design",
+        "start_date": "2024-08-01",
+        "end_date": "2024-08-15",
+        "status": "Active"
+    }
+    response = client.post("/sprints/", json=sprint_data)
+    assert response.status_code == 201
+    assert response.json()["sprint_name"] == "Sprint 1"
+
+def test_read_sprint():
+    sprint_id = "some-sprint-uuid"
+    response = client.get(f"/sprints/{sprint_id}")
+    assert response.status_code == 200
+    assert response.json()["sprint_id"] == sprint_id
+
+def test_update_sprint():
+    sprint_id = "some-sprint-uuid"
+    update_data = {
+        "status": "Completed"
+    }
+    response = client.put(f"/sprints/{sprint_id}", json=update_data)
+    assert response.status_code == 200
+    assert response.json()["status"] == "Completed"
+
+def test_delete_sprint():
+    sprint_id = "some-sprint-uuid"
+    response = client.delete(f"/sprints/{sprint_id}")
+    assert response.status_code == 204
+
+
+# File: backend-sqlmodel/app/tests/test_e_task.py
+
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.schemas import TaskCreate
+
+client = TestClient(app)
+
+def test_create_task():
+    task_data = {
+        "task_name": "Design Homepage",
+        "description": "Create initial design for the homepage",
+        "priority": "High",
+        "status": "Open",
+        "assigned_to": "some-profile-uuid",
+        "sprint_id": "some-sprint-uuid"
+    }
+    response = client.post("/tasks/", json=task_data)
+    assert response.status_code == 201
+    assert response.json()["task_name"] == "Design Homepage"
+
+def test_read_task():
+    task_id = "some-task-uuid"
+    response = client.get(f"/tasks/{task_id}")
+    assert response.status_code == 200
+    assert response.json()["task_id"] == task_id
+
+def test_update_task():
+    task_id = "some-task-uuid"
+    update_data = {
+        "status": "In Progress"
+    }
+    response = client.put(f"/tasks/{task_id}", json=update_data)
+    assert response.status_code == 200
+    assert response.json()["status"] == "In Progress"
+
+def test_delete_task():
+    task_id = "some-task-uuid"
+    response = client.delete(f"/tasks/{task_id}")
+    assert response.status_code == 204
+
+
+# File: backend-sqlmodel/app/tests/__init__.py
+
+
+
+# File: backend-sqlmodel/app/tests/test_e_daily_scrum.py
+
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.schemas import DailyScrumCreate
+
+client = TestClient(app)
+
+def test_create_daily_scrum():
+    scrum_data = {
+        "scrum_date": "2024-08-01",
+        "summary": "Daily Scrum Meeting",
+        "sprint_id": "some-sprint-uuid",
+        "project_id": "some-project-uuid"
+    }
+    response = client.post("/daily_scrums/", json=scrum_data)
+    assert response.status_code == 201
+    assert response.json()["summary"] == "Daily Scrum Meeting"
+
+def test_read_daily_scrum():
+    scrum_id = "some-daily-scrum-uuid"
+    response = client.get(f"/daily_scrums/{scrum_id}")
+    assert response.status_code == 200
+    assert response.json()["daily_scrum_id"] == scrum_id
+
+def test_update_daily_scrum():
+    scrum_id = "some-daily-scrum-uuid"
+    update_data = {
+        "summary": "Updated Scrum Meeting"
+    }
+    response = client.put(f"/daily_scrums/{scrum_id}", json=update_data)
+    assert response.status_code == 200
+    assert response.json()["summary"] == "Updated Scrum Meeting"
+
+def test_delete_daily_scrum():
+    scrum_id = "some-daily-scrum-uuid"
+    response = client.delete(f"/daily_scrums/{scrum_id}")
+    assert response.status_code == 204
+
+
+# File: backend-sqlmodel/app/tests/test_e_account.py
+
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.schemas import AccountCreate
+
+client = TestClient(app)
+
+def test_create_account():
+    account_data = {
+        "account_name": "Test Account",
+        "profile_id": "some-profile-uuid",
+        "account_type": "Customer"
+    }
+    response = client.post("/accounts/", json=account_data)
+    assert response.status_code == 201
+    assert response.json()["account_name"] == "Test Account"
+
+def test_read_account():
+    account_id = "some-account-uuid"
+    response = client.get(f"/accounts/{account_id}")
+    assert response.status_code == 200
+    assert response.json()["account_id"] == account_id
+
+def test_update_account():
+    account_id = "some-account-uuid"
+    update_data = {
+        "account_name": "Updated Account Name"
+    }
+    response = client.put(f"/accounts/{account_id}", json=update_data)
+    assert response.status_code == 200
+    assert response.json()["account_name"] == "Updated Account Name"
+
+def test_delete_account():
+    account_id = "some-account-uuid"
+    response = client.delete(f"/accounts/{account_id}")
+    assert response.status_code == 204
+
+
+# File: backend-sqlmodel/app/tests/test_e_project.py
+
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.schemas import ProjectCreate
+
+client = TestClient(app)
+
+def test_create_project():
+    project_data = {
+        "project_name": "Website Redesign",
+        "account_id": "some-account-uuid",
+        "profile_id": "some-profile-uuid",
+        "description": "Redesigning the corporate website"
+    }
+    response = client.post("/projects/", json=project_data)
+    assert response.status_code == 201
+    assert response.json()["project_name"] == "Website Redesign"
+
+def test_read_project():
+    project_id = "some-project-uuid"
+    response = client.get(f"/projects/{project_id}")
+    assert response.status_code == 200
+    assert response.json()["project_id"] == project_id
+
+def test_update_project():
+    project_id = "some-project-uuid"
+    update_data = {
+        "project_name": "Updated Project Name"
+    }
+    response = client.put(f"/projects/{project_id}", json=update_data)
+    assert response.status_code == 200
+    assert response.json()["project_name"] == "Updated Project Name"
+
+def test_delete_project():
+    project_id = "some-project-uuid"
+    response = client.delete(f"/projects/{project_id}")
+    assert response.status_code == 204
+
+
+# File: backend-sqlmodel/app/tests/test_e_opportunity.py
+
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.schemas import OpportunityCreate
+
+client = TestClient(app)
+
+def test_create_opportunity():
+    opportunity_data = {
+        "opportunity_name": "New Business Deal",
+        "close_date": "2024-12-31",
+        "ACV": 100000.00,
+        "account_id": "some-account-uuid",
+        "stage": "Negotiation",
+        "forecast_category": "Best Case",
+        "description": "A new business deal worth pursuing",
+        "currency_code": "USD",
+        "profile_id": "some-profile-uuid"
+    }
+    response = client.post("/opportunities/", json=opportunity_data)
+    assert response.status_code == 201
+    assert response.json()["opportunity_name"] == "New Business Deal"
+
+def test_read_opportunity():
+    opportunity_id = "some-opportunity-uuid"
+    response = client.get(f"/opportunities/{opportunity_id}")
+    assert response.status_code == 200
+    assert response.json()["opportunity_id"] == opportunity_id
+
+def test_update_opportunity():
+    opportunity_id = "some-opportunity-uuid"
+    update_data = {
+        "stage": "Closed Won"
+    }
+    response = client.put(f"/opportunities/{opportunity_id}", json=update_data)
+    assert response.status_code == 200
+    assert response.json()["stage"] == "Closed Won"
+
+def test_delete_opportunity():
+    opportunity_id = "some-opportunity-uuid"
+    response = client.delete(f"/opportunities/{opportunity_id}")
+    assert response.status_code == 204
+
+
+# File: backend-sqlmodel/app/tests/test_f_main.py
+
+# app/tests/test_main.py
+
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+def test_read_main():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Welcome to the API"}
+
+def test_not_found():
+    response = client.get("/nonexistent-url")
+    assert response.status_code == 404
+
+
+# File: backend-sqlmodel/app/tests/test_f_crud.py
+
+# app/tests/test_crud.py
+
+from fastapi.testclient import TestClient
+from app.main import app
+from app.schemas import AccountCreate, Account
+from app.crud import create_account, get_account
+
+client = TestClient(app)
+
+def test_create_account():
+    account_data = {"account_name": "Test Account", "account_type": "Customer"}
+    response = client.post("/accounts/", json=account_data)
+    assert response.status_code == 200
+    assert response.json()["account_name"] == "Test Account"
+
+def test_read_account():
+    response = client.get("/accounts/1")
+    assert response.status_code == 200
+    assert response.json()["account_name"] == "Test Account"
+
+
+# File: backend-sqlmodel/app/models/task.py
+
+from sqlmodel import SQLModel, Field
+from datetime import datetime
+from typing import Optional
+import uuid
+
+class Task(SQLModel, table=True):
+    task_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    task_name: str = Field(max_length=100)
+    description: Optional[str]
+    priority: str = Field(default="Low", max_length=50)
+    status: str = Field(max_length=20)
+    assigned_to: uuid.UUID = Field(foreign_key="profile.profile_id")
+    sprint_id: uuid.UUID = Field(foreign_key="sprint.sprint_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# File: backend-sqlmodel/app/models/profile_project.py
+
+from sqlmodel import SQLModel, Field
+from datetime import datetime
+from typing import Optional
+import uuid
+
+class ProfileProject(SQLModel, table=True):
+    profile_id: uuid.UUID = Field(foreign_key="profile.profile_id", primary_key=True)
+    project_id: uuid.UUID = Field(foreign_key="project.project_id", primary_key=True)
+    role: Optional[str]
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# File: backend-sqlmodel/app/models/organization.py
+
+from sqlmodel import SQLModel, Field
+from datetime import datetime
+from typing import Optional
+import uuid
+
+class Organization(SQLModel, table=True):
+    org_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    task_name: Optional[str]
+    org_type: Optional[str]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# File: backend-sqlmodel/app/models/daily_scrum_task_association.py
+
+from sqlmodel import SQLModel, Field
+import uuid
+
+class DailyScrumTaskAssociation(SQLModel, table=True):
+    task_id: uuid.UUID = Field(foreign_key="task.task_id", primary_key=True)
+    daily_scrum_id: uuid.UUID = Field(foreign_key="daily_scrum.daily_scrum_id", primary_key=True)
+
+
+# File: backend-sqlmodel/app/models/profile.py
+
+from sqlmodel import SQLModel, Field
+from datetime import datetime
+from typing import Optional
+import uuid
+
+class Profile(SQLModel, table=True):
+    profile_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    username: str = Field(max_length=50)
+    email: str = Field(max_length=50)
+    org_id: uuid.UUID = Field(foreign_key="organization.org_id")
+    first_name: Optional[str]
+    last_name: Optional[str]
+    job_role: Optional[str]
+    full_name: Optional[str] = Field(default=None, max_length=50)
+    work_email: Optional[str] = Field(default=None, max_length=50)
+    is_verified: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# File: backend-sqlmodel/app/models/daily_scrum.py
+
+from sqlmodel import SQLModel, Field
+from typing import Optional
+from datetime import date
+import uuid
+
+class DailyScrum(SQLModel, table=True):
+    daily_scrum_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    scrum_date: date
+    summary: Optional[str]
+    sprint_id: uuid.UUID = Field(foreign_key="sprint.sprint_id")
+    project_id: uuid.UUID = Field(foreign_key="project.project_id")
+
+
+# File: backend-sqlmodel/app/models/daily_scrum_update.py
+
+from sqlmodel import SQLModel, Field
+from datetime import datetime
+from typing import Optional
+import uuid
+
+class DailyScrumUpdate(SQLModel, table=True):
+    update_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    yesterday_work: Optional[str]
+    today_work: Optional[str]
+    impediments: Optional[str]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    daily_scrum_id: uuid.UUID = Field(foreign_key="daily_scrum.daily_scrum_id")
+    profile_id: uuid.UUID = Field(foreign_key="profile.profile_id")
+
+
+# File: backend-sqlmodel/app/models/opportunity.py
+
+from sqlmodel import SQLModel, Field
+from typing import Optional
+from datetime import datetime, date
+import uuid
+
+class Opportunity(SQLModel, table=True):
+    opportunity_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    opportunity_name: str = Field(max_length=100)
+    close_date: date
+    ACV: float = Field(default=0)
+    account_id: uuid.UUID = Field(foreign_key="account.account_id")
+    stage: str = Field(max_length=50)
+    forecast_category: str = Field(max_length=50)
+    description: Optional[str]
+    currency_code: str = Field(max_length=3)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    profile_id: uuid.UUID = Field(foreign_key="profile.profile_id")
+
+
+# File: backend-sqlmodel/app/models/sprint.py
+
+from sqlmodel import SQLModel, Field
+from datetime import datetime, date
+from typing import Optional
+import uuid
+
+class Sprint(SQLModel, table=True):
+    sprint_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    sprint_name: str = Field(max_length=100)
+    project_id: uuid.UUID = Field(foreign_key="project.project_id")
+    goal: Optional[str] = Field(max_length=150)
+    start_date: date
+    end_date: date
+    status: str = Field(max_length=50)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# File: backend-sqlmodel/app/models/project.py
+
+from sqlmodel import SQLModel, Field
+from datetime import datetime
+from typing import Optional
+import uuid
+
+class Project(SQLModel, table=True):
+    project_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    project_name: str = Field(max_length=100)
+    account_id: uuid.UUID = Field(foreign_key="account.account_id")
+    opportunity_id: Optional[uuid.UUID] = Field(default=None, foreign_key="opportunity.opportunity_id")
+    profile_id: uuid.UUID = Field(foreign_key="profile.profile_id")
+    description: Optional[str]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# File: backend-sqlmodel/app/models/account.py
+
+from sqlmodel import SQLModel, Field, Event
+from datetime import datetime
+import uuid
+
+class Account(SQLModel, table=True):
+    account_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    account_name: str = Field(max_length=100)
+    profile_id: uuid.UUID = Field(foreign_key="profile.profile_id")
+    account_type: str = Field(default="Prospect", max_length=50)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        sa.UniqueConstraint('account_name', name='uix_account_name'),
+    )
+
+    @Event.before_update
+    def update_timestamp(self):
+        self.updated_at = datetime.utcnow()
+
+# File: backend-sqlmodel/app/schemas/task.py
+
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel
+from typing import Optional
+
+class TaskBase(BaseModel):
+    task_name: str
+    sprint_id: UUID
+    assigned_to: UUID
+    description: Optional[str] = None
+    priority: Optional[str] = "Low"
+    status: str
+
+class TaskCreate(TaskBase):
+    pass
+
+class TaskUpdate(TaskBase):
+    pass
+
+class TaskInDBBase(TaskBase):
+    task_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class Task(TaskInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/organization.py
+
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel
+
+class OrganizationBase(BaseModel):
+    task_name: Optional[str]
+    org_type: Optional[str]
+
+class OrganizationCreate(OrganizationBase):
+    pass
+
+class OrganizationUpdate(OrganizationBase):
+    pass
+
+class OrganizationInDBBase(OrganizationBase):
+    org_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class Organization(OrganizationInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/daily_scrum_task_association.py
+
+from uuid import UUID
+from pydantic import BaseModel
+
+class DailyScrumTaskAssociationBase(BaseModel):
+    task_id: UUID
+    daily_scrum_id: UUID
+
+class DailyScrumTaskAssociationCreate(DailyScrumTaskAssociationBase):
+    pass
+
+class DailyScrumTaskAssociationUpdate(DailyScrumTaskAssociationBase):
+    pass
+
+class DailyScrumTaskAssociationInDBBase(DailyScrumTaskAssociationBase):
+    pass
+
+class DailyScrumTaskAssociation(DailyScrumTaskAssociationInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/profile.py
+
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel
+
+class ProfileBase(BaseModel):
+    username: str
+    email: str
+    org_id: UUID
+    first_name: Optional[str]
+    last_name: Optional[str]
+    job_role: Optional[str]
+    work_email: Optional[str]
+    is_verified: Optional[bool] = False
+
+class ProfileCreate(ProfileBase):
+    pass
+
+class ProfileUpdate(ProfileBase):
+    pass
+
+class ProfileInDBBase(ProfileBase):
+    profile_id: UUID
+    full_name: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class Profile(ProfileInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/daily_scrum.py
+
+from datetime import date, datetime
+from uuid import UUID
+from pydantic import BaseModel
+from typing import Optional
+
+class DailyScrumBase(BaseModel):
+    scrum_date: date
+    sprint_id: UUID
+    project_id: UUID
+    summary: Optional[str] = None
+
+class DailyScrumCreate(DailyScrumBase):
+    pass
+
+class DailyScrumUpdate(DailyScrumBase):
+    pass
+
+class DailyScrumInDBBase(DailyScrumBase):
+    daily_scrum_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class DailyScrum(DailyScrumInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/daily_scrum_update.py
+
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel
+from typing import Optional
+
+class DailyScrumUpdateBase(BaseModel):
+    yesterday_work: str
+    today_work: str
+    impediemnts: Optional[str] = None
+    daily_scrum_id: UUID
+    profile_id: UUID
+
+class DailyScrumUpdateCreate(DailyScrumUpdateBase):
+    pass
+
+class DailyScrumUpdateUpdate(DailyScrumUpdateBase):
+    pass
+
+class DailyScrumUpdateInDBBase(DailyScrumUpdateBase):
+    update_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class DailyScrumUpdate(DailyScrumUpdateInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/opportunity.py
+
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel
+
+class OpportunityBase(BaseModel):
+    opportunity_name: str
+    account_id: UUID
+    stage: str
+    forecast_category: str
+    acv: float
+    description: Optional[str] = None
+    currency_code: str
+
+class OpportunityCreate(OpportunityBase):
+    close_date: datetime
+
+class OpportunityUpdate(OpportunityBase):
+    close_date: Optional[datetime] = None
+
+class OpportunityInDBBase(OpportunityBase):
+    opportunity_id: UUID
+    close_date: datetime
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class Opportunity(OpportunityInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/sprint.py
+
+from datetime import date, datetime
+from uuid import UUID
+from pydantic import BaseModel
+from typing import Optional
+
+class SprintBase(BaseModel):
+    sprint_name: str
+    project_id: UUID
+    goal: Optional[str] = None
+    start_date: date
+    end_date: date
+    status: str
+
+class SprintCreate(SprintBase):
+    pass
+
+class SprintUpdate(SprintBase):
+    pass
+
+class SprintInDBBase(SprintBase):
+    sprint_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class Sprint(SprintInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/project.py
+
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel
+
+class ProjectBase(BaseModel):
+    project_name: str
+    account_id: UUID
+    profile_id: UUID
+    description: Optional[str] = None
+    opportunity_id: Optional[UUID] = None
+
+class ProjectCreate(ProjectBase):
+    pass
+
+class ProjectUpdate(ProjectBase):
+    pass
+
+class ProjectInDBBase(ProjectBase):
+    project_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class Project(ProjectInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/schemas/account.py
+
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel
+
+class AccountBase(BaseModel):
+    account_name: str
+    account_type: Optional[str] = "Prospect"
+    profile_id: UUID
+
+class AccountCreate(AccountBase):
+    pass
+
+class AccountUpdate(AccountBase):
+    pass
+
+class AccountInDBBase(AccountBase):
+    account_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class Account(AccountInDBBase):
+    pass
+
+
+# File: backend-sqlmodel/app/crud/task.py
+
+from sqlmodel import Session, select
+from app.models.task import Task
+from typing import List, Optional
+from uuid import UUID
+
+def create_task(session: Session, task: Task) -> Task:
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+def get_task(session: Session, task_id: UUID) -> Optional[Task]:
+    return session.get(Task, task_id)
+
+def get_tasks(session: Session, skip: int = 0, limit: int = 10) -> List[Task]:
+    return session.exec(select(Task).offset(skip).limit(limit)).all()
+
+def update_task(session: Session, task_id: UUID, task_data: Task) -> Optional[Task]:
+    task = session.get(Task, task_id)
+    if not task:
+        return None
+    task_data_dict = task_data.dict(exclude_unset=True)
+    for key, value in task_data_dict.items():
+        setattr(task, key, value)
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+def delete_task(session: Session, task_id: UUID) -> bool:
+    task = session.get(Task, task_id)
+    if not task:
+        return False
+    session.delete(task)
+    session.commit()
+    return True
+
+
+# File: backend-sqlmodel/app/crud/organization.py
+
+from sqlmodel import Session, select
+from app.models.organization import Organization
+from typing import List, Optional
+from uuid import UUID
+
+def create_organization(session: Session, organization: Organization) -> Organization:
+    session.add(organization)
+    session.commit()
+    session.refresh(organization)
+    return organization
+
+def get_organization(session: Session, org_id: UUID) -> Optional[Organization]:
+    return session.get(Organization, org_id)
+
+def get_organizations(session: Session, skip: int = 0, limit: int = 10) -> List[Organization]:
+    return session.exec(select(Organization).offset(skip).limit(limit)).all()
+
+def update_organization(session: Session, org_id: UUID, organization_data: Organization) -> Optional[Organization]:
+    organization = session.get(Organization, org_id)
+    if not organization:
+        return None
+    organization_data_dict = organization_data.dict(exclude_unset=True)
+    for key, value in organization_data_dict.items():
+        setattr(organization, key, value)
+    session.add(organization)
+    session.commit()
+    session.refresh(organization)
+    return organization
+
+def delete_organization(session: Session, org_id: UUID) -> bool:
+    organization = session.get(Organization, org_id)
+    if not organization:
+        return False
+    session.delete(organization)
+    session.commit()
+    return True
+
+
+# File: backend-sqlmodel/app/crud/profile.py
+
+from sqlmodel import Session, select
+from app.models.profile import Profile
+from typing import List, Optional
+from uuid import UUID
+
+def create_profile(session: Session, profile: Profile) -> Profile:
+    # profile.full_name = generate_full_name(profile.first_name, profile.last_name) # PostgreSQL 에서 트리거로 처리되었을 경우 필요 없음
+    session.add(profile)
+    session.commit()
+    session.refresh(profile)
+    return profile
+
+def get_profile(session: Session, profile_id: UUID) -> Optional[Profile]:
+    return session.get(Profile, profile_id)
+
+def get_profiles(session: Session, skip: int = 0, limit: int = 10) -> List[Profile]:
+    return session.exec(select(Profile).offset(skip).limit(limit)).all()
+
+def update_profile(session: Session, profile_id: UUID, profile_data: Profile) -> Optional[Profile]:
+    profile = session.get(Profile, profile_id)
+    if not profile:
+        return None
+    profile_data_dict = profile_data.dict(exclude_unset=True)
+    for key, value in profile_data_dict.items():
+        setattr(profile, key, value)
+    session.add(profile)
+    session.commit()
+    session.refresh(profile)
+    return profile
+
+# def generate_full_name(first_name: str, last_name: str) -> str:   # PostgreSQL 에서 트리거로 처리되었을 경우 필요 없음
+#     if is_korean(first_name):
+#         return last_name + first_name
+#     else:
+#         return first_name + ' ' + last_name
+
+# def is_korean(text: str) -> bool:
+#     first_char = ord(text[0])
+#     return '\uAC00' <= first_char <= '\uD7A3'
+
+def delete_profile(session: Session, profile_id: UUID) -> bool:
+    profile = session.get(Profile, profile_id)
+    if not profile:
+        return False
+    session.delete(profile)
+    session.commit()
+    return True
+
+
+# File: backend-sqlmodel/app/crud/daily_scrum.py
+
+from sqlmodel import Session, select
+from app.models.daily_scrum import DailyScrum
+from typing import List, Optional
+from uuid import UUID
+
+def create_daily_scrum(session: Session, daily_scrum: DailyScrum) -> DailyScrum:
+    session.add(daily_scrum)
+    session.commit()
+    session.refresh(daily_scrum)
+    return daily_scrum
+
+def get_daily_scrum(session: Session, daily_scrum_id: UUID) -> Optional[DailyScrum]:
+    return session.get(DailyScrum, daily_scrum_id)
+
+def get_daily_scrums(session: Session, skip: int = 0, limit: int = 10) -> List[DailyScrum]:
+    return session.exec(select(DailyScrum).offset(skip).limit(limit)).all()
+
+def update_daily_scrum(session: Session, daily_scrum_id: UUID, daily_scrum_data: DailyScrum) -> Optional[DailyScrum]:
+    daily_scrum = session.get(DailyScrum, daily_scrum_id)
+    if not daily_scrum:
+        return None
+    daily_scrum_data_dict = daily_scrum_data.dict(exclude_unset=True)
+    for key, value in daily_scrum_data_dict.items():
+        setattr(daily_scrum, key, value)
+    session.add(daily_scrum)
+    session.commit()
+    session.refresh(daily_scrum)
+    return daily_scrum
+
+def delete_daily_scrum(session: Session, daily_scrum_id: UUID) -> bool:
+    daily_scrum = session.get(DailyScrum, daily_scrum_id)
+    if not daily_scrum:
+        return False
+    session.delete(daily_scrum)
+    session.commit()
+    return True
+
+
+# File: backend-sqlmodel/app/crud/opportunity.py
+
+from sqlmodel import Session, select
+from app.models.opportunity import Opportunity
+from typing import List, Optional
+from uuid import UUID
+
+def create_opportunity(session: Session, opportunity: Opportunity) -> Opportunity:
+    session.add(opportunity)
+    session.commit()
+    session.refresh(opportunity)
+    return opportunity
+
+def get_opportunity(session: Session, opportunity_id: UUID) -> Optional[Opportunity]:
+    return session.get(Opportunity, opportunity_id)
+
+def get_opportunities(session: Session, skip: int = 0, limit: int = 10) -> List[Opportunity]:
+    return session.exec(select(Opportunity).offset(skip).limit(limit)).all()
+
+def update_opportunity(session: Session, opportunity_id: UUID, opportunity_data: Opportunity) -> Optional[Opportunity]:
+    opportunity = session.get(Opportunity, opportunity_id)
+    if not opportunity:
+        return None
+    opportunity_data_dict = opportunity_data.dict(exclude_unset=True)
+    for key, value in opportunity_data_dict.items():
+        setattr(opportunity, key, value)
+    session.add(opportunity)
+    session.commit()
+    session.refresh(opportunity)
+    return opportunity
+
+def delete_opportunity(session: Session, opportunity_id: UUID) -> bool:
+    opportunity = session.get(Opportunity, opportunity_id)
+    if not opportunity:
+        return False
+    session.delete(opportunity)
+    session.commit()
+    return True
+
+
+# File: backend-sqlmodel/app/crud/sprint.py
+
+from sqlmodel import Session, select
+from app.models.sprint import Sprint
+from typing import List, Optional
+from uuid import UUID
+
+def create_sprint(session: Session, sprint: Sprint) -> Sprint:
+    session.add(sprint)
+    session.commit()
+    session.refresh(sprint)
+    return sprint
+
+def get_sprint(session: Session, sprint_id: UUID) -> Optional[Sprint]:
+    return session.get(Sprint, sprint_id)
+
+def get_sprints(session: Session, skip: int = 0, limit: int = 10) -> List[Sprint]:
+    return session.exec(select(Sprint).offset(skip).limit(limit)).all()
+
+def update_sprint(session: Session, sprint_id: UUID, sprint_data: Sprint) -> Optional[Sprint]:
+    sprint = session.get(Sprint, sprint_id)
+    if not sprint:
+        return None
+    sprint_data_dict = sprint_data.dict(exclude_unset=True)
+    for key, value in sprint_data_dict.items():
+        setattr(sprint, key, value)
+    session.add(sprint)
+    session.commit()
+    session.refresh(sprint)
+    return sprint
+
+def delete_sprint(session: Session, sprint_id: UUID) -> bool:
+    sprint = session.get(Sprint, sprint_id)
+    if not sprint:
+        return False
+    session.delete(sprint)
+    session.commit()
+    return True
+
+
+# File: backend-sqlmodel/app/crud/project.py
+
+from sqlmodel import Session, select
+from app.models.project import Project
+from typing import List, Optional
+from uuid import UUID
+
+def create_project(session: Session, project: Project) -> Project:
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    return project
+
+def get_project(session: Session, project_id: UUID) -> Optional[Project]:
+    return session.get(Project, project_id)
+
+def get_projects(session: Session, skip: int = 0, limit: int = 10) -> List[Project]:
+    return session.exec(select(Project).offset(skip).limit(limit)).all()
+
+def update_project(session: Session, project_id: UUID, project_data: Project) -> Optional[Project]:
+    project = session.get(Project, project_id)
+    if not project:
+        return None
+    project_data_dict = project_data.dict(exclude_unset=True)
+    for key, value in project_data_dict.items():
+        setattr(project, key, value)
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    return project
+
+def delete_project(session: Session, project_id: UUID) -> bool:
+    project = session.get(Project, project_id)
+    if not project:
+        return False
+    session.delete(project)
+    session.commit()
+    return True
+
+
+# File: backend-sqlmodel/app/crud/account.py
+
+from sqlmodel import Session, select
+from app.models.account import Account
+from typing import List, Optional
+from uuid import UUID
+
+def create_account(session: Session, account: Account) -> Account:
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
+
+def get_account(session: Session, account_id: UUID) -> Optional[Account]:
+    return session.get(Account, account_id)
+
+def get_accounts(session: Session, skip: int = 0, limit: int = 10) -> List[Account]:
+    return session.exec(select(Account).offset(skip).limit(limit)).all()
+
+def update_account(session: Session, account_id: UUID, account_data: Account) -> Optional[Account]:
+    account = session.get(Account, account_id)
+    if not account:
+        return None
+    account_data_dict = account_data.dict(exclude_unset=True)
+    for key, value in account_data_dict.items():
+        setattr(account, key, value)
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
+
+def delete_account(session: Session, account_id: UUID) -> bool:
+    account = session.get(Account, account_id)
+    if not account:
+        return False
+    session.delete(account)
+    session.commit()
+    return True
+
+
+# File: backend-sqlmodel/app/db/session.py
+
+# app/db/session.py
+from sqlmodel import SQLModel, create_engine, Session
+from app.core.config import settings
+
+engine = create_engine(settings.DATABASE_URL)
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+
+# File: backend-sqlmodel/app/db/base.py
+
+from sqlmodel import SQLModel
+from app.models.account import Account
+from app.models.daily_scrum import DailyScrum
+from app.models.opportunity import Opportunity
+from app.models.project import Project
+from app.models.sprint import Sprint
+from app.models.task import Task
+from app.models.profile import Profile
+from app.models.organization import Organization
+from app.models.profile_project import ProfileProject
+
+# 이 파일은 모든 모델을 한 곳에서 import하여 Alembic이 인식할 수 있게 합니다.
+# 또한, SQLModel의 메타데이터를 포함하여 마이그레이션 관리에 사용됩니다.
+
+__all__ = [
+    "SQLModel",
+    "Account",
+    "DailyScrum",
+    "Opportunity",
+    "Project",
+    "Sprint",
+    "Task",
+    "Profile",
+    "Organization",
+    "ProfileProject",
+]
+
+
+# File: backend-sqlmodel/app/db/init_db.py
+
+# app/db/init_db.py
+from sqlmodel import SQLModel
+from app.db.session import engine
+from app.models.account import Account
+# 다른 모델 임포트
+
+def init_db():
+    SQLModel.metadata.create_all(engine)
+
+
+# File: backend-sqlmodel/app/api/deps.py
+
+from typing import Generator
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+from app.db.session import SessionLocal
+
+# Dependency that provides a SQLAlchemy session
+def get_db() -> Generator:
+    try:
+        db = SessionLocal()
+        yield db
+    finally:
+        db.close()
+
+
+# File: backend-sqlmodel/app/api/__init__.py
+
+
+
+# File: backend-sqlmodel/app/api/api_v1.py
+
+from fastapi import APIRouter
+
+from app.api.v1.endpoints import accounts, daily_scrums, profiles, projects, sprints, tasks, opportunities
+
+api_router = APIRouter()
+api_router.include_router(accounts.router, prefix="/accounts", tags=["accounts"])
+api_router.include_router(daily_scrums.router, prefix="/daily-scrums", tags=["daily_scrums"])
+api_router.include_router(profiles.router, prefix="/profiles", tags=["profiles"])
+api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
+api_router.include_router(sprints.router, prefix="/sprints", tags=["sprints"])
+api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
+api_router.include_router(opportunities.router, prefix="/opportunities", tags=["opportunities"])
+
+
+# File: backend-sqlmodel/app/api/v1/__init__.py
+
+
+
+# File: backend-sqlmodel/app/api/v1/endpoints/sprints.py
+
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app import schemas, models
+from app.api import deps
+
+router = APIRouter()
+
+@router.get("/", response_model=List[schemas.Sprint])
+def read_sprints(skip: int = 0, limit: int = 10, db: Session = Depends(deps.get_db)):
+    statement = select(models.Sprint).offset(skip).limit(limit)
+    results = db.exec(statement)
+    sprints = results.all()
+    return sprints
+
+@router.post("/", response_model=schemas.Sprint)
+def create_sprint(sprint_in: schemas.SprintCreate, db: Session = Depends(deps.get_db)):
+    sprint = models.Sprint.model_validate(sprint_in)
+    db.add(sprint)
+    db.commit()
+    db.refresh(sprint)
+    return sprint
+
+@router.get("/{sprint_id}", response_model=schemas.Sprint)
+def read_sprint(sprint_id: str, db: Session = Depends(deps.get_db)):
+    sprint = db.get(models.Sprint, sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    return sprint
+
+@router.put("/{sprint_id}", response_model=schemas.Sprint)
+def update_sprint(sprint_id: str, sprint_in: schemas.SprintUpdate, db: Session = Depends(deps.get_db)):
+    sprint = db.get(models.Sprint, sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    sprint_data = sprint_in.dict(exclude_unset=True)
+    for key, value in sprint_data.items():
+        setattr(sprint, key, value)
+    db.add(sprint)
+    db.commit()
+    db.refresh(sprint)
+    return sprint
+
+@router.delete("/{sprint_id}", response_model=schemas.Sprint)
+def delete_sprint(sprint_id: str, db: Session = Depends(deps.get_db)):
+    sprint = db.get(models.Sprint, sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    db.delete(sprint)
+    db.commit()
+    return sprint
+
+
+# File: backend-sqlmodel/app/api/v1/endpoints/tasks.py
+
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app import schemas, models
+from app.api import deps
+
+router = APIRouter()
+
+@router.get("/", response_model=List[schemas.Task])
+def read_tasks(skip: int = 0, limit: int = 10, db: Session = Depends(deps.get_db)):
+    statement = select(models.Task).offset(skip).limit(limit)
+    results = db.exec(statement)
+    tasks = results.all()
+    return tasks
+
+@router.post("/", response_model=schemas.Task)
+def create_task(task_in: schemas.TaskCreate, db: Session = Depends(deps.get_db)):
+    task = models.Task.model_validate(task_in)
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+@router.get("/{task_id}", response_model=schemas.Task)
+def read_task(task_id: str, db: Session = Depends(deps.get_db)):
+    task = db.get(models.Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+@router.put("/{task_id}", response_model=schemas.Task)
+def update_task(task_id: str, task_in: schemas.TaskUpdate, db: Session = Depends(deps.get_db)):
+    task = db.get(models.Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task_data = task_in.dict(exclude_unset=True)
+    for key, value in task_data.items():
+        setattr(task, key, value)
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+@router.delete("/{task_id}", response_model=schemas.Task)
+def delete_task(task_id: str, db: Session = Depends(deps.get_db)):
+    task = db.get(models.Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db.delete(task)
+    db.commit()
+    return task
+
+
+# File: backend-sqlmodel/app/api/v1/endpoints/accounts.py
+
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app import schemas, models
+from app.api import deps
+
+router = APIRouter()
+
+@router.get("/", response_model=List[schemas.Account])
+def read_accounts(skip: int = 0, limit: int = 10, db: Session = Depends(deps.get_db)):
+    statement = select(models.Account).offset(skip).limit(limit)
+    results = db.exec(statement)
+    accounts = results.all()
+    return accounts
+
+@router.post("/", response_model=schemas.Account)
+def create_account(account_in: schemas.AccountCreate, db: Session = Depends(deps.get_db)):
+    account = models.Account.model_validate(account_in)
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return account
+
+@router.get("/{account_id}", response_model=schemas.Account)
+def read_account(account_id: str, db: Session = Depends(deps.get_db)):
+    account = db.get(models.Account, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return account
+
+@router.put("/{account_id}", response_model=schemas.Account)
+def update_account(account_id: str, account_in: schemas.AccountUpdate, db: Session = Depends(deps.get_db)):
+    account = db.get(models.Account, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    account_data = account_in.dict(exclude_unset=True)
+    for key, value in account_data.items():
+        setattr(account, key, value)
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return account
+
+@router.delete("/{account_id}", response_model=schemas.Account)
+def delete_account(account_id: str, db: Session = Depends(deps.get_db)):
+    account = db.get(models.Account, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    db.delete(account)
+    db.commit()
+    return account
+
+
+# File: backend-sqlmodel/app/api/v1/endpoints/opportunities.py
+
+
+
+# File: backend-sqlmodel/app/api/v1/endpoints/daily_scrums.py
+
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app import schemas, models
+from app.api import deps
+
+router = APIRouter()
+
+@router.get("/", response_model=List[schemas.DailyScrum])
+def read_daily_scrums(skip: int = 0, limit: int = 10, db: Session = Depends(deps.get_db)):
+    statement = select(models.DailyScrum).offset(skip).limit(limit)
+    results = db.exec(statement)
+    daily_scrums = results.all()
+    return daily_scrums
+
+@router.post("/", response_model=schemas.DailyScrum)
+def create_daily_scrum(scrum_in: schemas.DailyScrumCreate, db: Session = Depends(deps.get_db)):
+    daily_scrum = models.DailyScrum.model_validate(scrum_in)
+    db.add(daily_scrum)
+    db.commit()
+    db.refresh(daily_scrum)
+    return daily_scrum
+
+@router.get("/{scrum_id}", response_model=schemas.DailyScrum)
+def read_daily_scrum(scrum_id: str, db: Session = Depends(deps.get_db)):
+    daily_scrum = db.get(models.DailyScrum, scrum_id)
+    if not daily_scrum:
+        raise HTTPException(status_code=404, detail="Daily Scrum not found")
+    return daily_scrum
+
+@router.put("/{scrum_id}", response_model=schemas.DailyScrum)
+def update_daily_scrum(scrum_id: str, scrum_in: schemas.DailyScrumUpdate, db: Session = Depends(deps.get_db)):
+    daily_scrum = db.get(models.DailyScrum, scrum_id)
+    if not daily_scrum:
+        raise HTTPException(status_code=404, detail="Daily Scrum not found")
+    scrum_data = scrum_in.dict(exclude_unset=True)
+    for key, value in scrum_data.items():
+        setattr(daily_scrum, key, value)
+    db.add(daily_scrum)
+    db.commit()
+    db.refresh(daily_scrum)
+    return daily_scrum
+
+@router.delete("/{scrum_id}", response_model=schemas.DailyScrum)
+def delete_daily_scrum(scrum_id: str, db: Session = Depends(deps.get_db)):
+    daily_scrum = db.get(models.DailyScrum, scrum_id)
+    if not daily_scrum:
+        raise HTTPException(status_code=404, detail="Daily Scrum not found")
+    db.delete(daily_scrum)
+    db.commit()
+    return daily_scrum
+
+
+# File: backend-sqlmodel/app/api/v1/endpoints/projects.py
+
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app import schemas, models
+from app.api import deps
+
+router = APIRouter()
+
+@router.get("/", response_model=List[schemas.Project])
+def read_projects(skip: int = 0, limit: int = 10, db: Session = Depends(deps.get_db)):
+    statement = select(models.Project).offset(skip).limit(limit)
+    results = db.exec(statement)
+    projects = results.all()
+    return projects
+
+@router.post("/", response_model=schemas.Project)
+def create_project(project_in: schemas.ProjectCreate, db: Session = Depends(deps.get_db)):
+    project = models.Project.model_validate(project_in)
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return project
+
+@router.get("/{project_id}", response_model=schemas.Project)
+def read_project(project_id: str, db: Session = Depends(deps.get_db)):
+    project = db.get(models.Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+@router.put("/{project_id}", response_model=schemas.Project)
+def update_project(project_id: str, project_in: schemas.ProjectUpdate, db: Session = Depends(deps.get_db)):
+    project = db.get(models.Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project_data = project_in.dict(exclude_unset=True)
+    for key, value in project_data.items():
+        setattr(project, key, value)
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return project
+
+@router.delete("/{project_id}", response_model=schemas.Project)
+def delete_project(project_id: str, db: Session = Depends(deps.get_db)):
+    project = db.get(models.Project, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    db.delete(project)
+    db.commit()
+    return project
+
+
+# File: backend-sqlmodel/app/api/v1/endpoints/profiles.py
+
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app import schemas, models
+from app.api import deps
+
+router = APIRouter()
+
+@router.get("/", response_model=List[schemas.Profile])
+def read_profiles(skip: int = 0, limit: int = 10, db: Session = Depends(deps.get_db)):
+    statement = select(models.Profile).offset(skip).limit(limit)
+    results = db.exec(statement)
+    profiles = results.all()
+    return profiles
+
+@router.post("/", response_model=schemas.Profile)
+def create_profile(profile_in: schemas.ProfileCreate, db: Session = Depends(deps.get_db)):
+    profile = models.Profile.model_validate(profile_in)
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+@router.get("/{profile_id}", response_model=schemas.Profile)
+def read_profile(profile_id: str, db: Session = Depends(deps.get_db)):
+    profile = db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile
+
+@router.put("/{profile_id}", response_model=schemas.Profile)
+def update_profile(profile_id: str, profile_in: schemas.ProfileUpdate, db: Session = Depends(deps.get_db)):
+    profile = db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    profile_data = profile_in.dict(exclude_unset=True)
+    for key, value in profile_data.items():
+        setattr(profile, key, value)
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+@router.delete("/{profile_id}", response_model=schemas.Profile)
+def delete_profile(profile_id: str, db: Session = Depends(deps.get_db)):
+    profile = db.get(models.Profile, profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    db.delete(profile)
+    db.commit()
+    return profile
+
+
+# File: backend-sqlmodel/alembic/env.py
+
+# alembic/env.py
+
+from logging.config import fileConfig
+from sqlalchemy import engine_from_config, pool
+from alembic import context
+
+# Import your models here to ensure they are included in Alembic's migration process
+from app.models.account import Account
+from app.models.daily_scrum import DailyScrum
+from app.models.opportunity import Opportunity
+from app.models.project import Project
+from app.models.sprint import Sprint
+from app.models.task import Task
+from app.models.profile import Profile
+from app.models.organization import Organization
+
+from app.db.base import SQLModel  # Base class for all models
+from app.core.config import settings  # Ensure settings are loaded
+
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
+config = context.config
+
+# Interpret the config file for Python logging.
+# This line sets up loggers basically.
+fileConfig(config.config_file_name)
+
+# Update this line to use the settings' DATABASE_URL
+config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
+
+# Make sure to include all metadata from your models
+target_metadata = SQLModel.metadata
+
+def run_migrations_offline():
+    """Run migrations in 'offline' mode."""
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online():
+    """Run migrations in 'online' mode."""
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
+
+
+# File: backend-sqlmodel/alembic/versions/163615c130a9_initial_migration.py
+
+"""Initial migration
+
+Revision ID: 163615c130a9
+Revises: 
+Create Date: 2024-08-12 02:53:16.168082
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = '163615c130a9'
+down_revision: Union[str, None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.create_table('organization',
+    sa.Column('org_id', sa.Uuid(), nullable=False),
+    sa.Column('task_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('org_type', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.PrimaryKeyConstraint('org_id')
+    )
+    op.create_table('profile',
+    sa.Column('profile_id', sa.Uuid(), nullable=False),
+    sa.Column('username', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('email', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('org_id', sa.Uuid(), nullable=False),
+    sa.Column('first_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('last_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('job_role', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('full_name', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+    sa.Column('work_email', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+    sa.Column('is_verified', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['org_id'], ['organization.org_id'], ),
+    sa.PrimaryKeyConstraint('profile_id')
+    )
+    op.create_table('account',
+    sa.Column('account_id', sa.Uuid(), nullable=False),
+    sa.Column('account_name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('profile_id', sa.Uuid(), nullable=False),
+    sa.Column('account_type', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['profile_id'], ['profile.profile_id'], ),
+    sa.PrimaryKeyConstraint('account_id'),
+    sa.UniqueConstraint('account_name')
+    )
+    op.create_index(op.f('ix_account_account_id'), 'account', ['account_id'], unique=False)
+    op.create_table('opportunity',
+    sa.Column('opportunity_id', sa.Uuid(), nullable=False),
+    sa.Column('opportunity_name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('close_date', sa.Date(), nullable=False),
+    sa.Column('ACV', sa.Float(), nullable=False),
+    sa.Column('account_id', sa.Uuid(), nullable=False),
+    sa.Column('stage', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('forecast_category', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('currency_code', sqlmodel.sql.sqltypes.AutoString(length=3), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.Column('profile_id', sa.Uuid(), nullable=False),
+    sa.ForeignKeyConstraint(['account_id'], ['account.account_id'], ),
+    sa.ForeignKeyConstraint(['profile_id'], ['profile.profile_id'], ),
+    sa.PrimaryKeyConstraint('opportunity_id')
+    )
+    op.create_table('project',
+    sa.Column('project_id', sa.Uuid(), nullable=False),
+    sa.Column('project_name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('account_id', sa.Uuid(), nullable=False),
+    sa.Column('opportunity_id', sa.Uuid(), nullable=True),
+    sa.Column('profile_id', sa.Uuid(), nullable=False),
+    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['account_id'], ['account.account_id'], ),
+    sa.ForeignKeyConstraint(['opportunity_id'], ['opportunity.opportunity_id'], ),
+    sa.ForeignKeyConstraint(['profile_id'], ['profile.profile_id'], ),
+    sa.PrimaryKeyConstraint('project_id')
+    )
+    op.create_table('profileproject',
+    sa.Column('profile_id', sa.Uuid(), nullable=False),
+    sa.Column('project_id', sa.Uuid(), nullable=False),
+    sa.Column('role', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('joined_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['profile_id'], ['profile.profile_id'], ),
+    sa.ForeignKeyConstraint(['project_id'], ['project.project_id'], ),
+    sa.PrimaryKeyConstraint('profile_id', 'project_id')
+    )
+    op.create_table('sprint',
+    sa.Column('sprint_id', sa.Uuid(), nullable=False),
+    sa.Column('sprint_name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('project_id', sa.Uuid(), nullable=False),
+    sa.Column('goal', sqlmodel.sql.sqltypes.AutoString(length=150), nullable=True),
+    sa.Column('start_date', sa.Date(), nullable=False),
+    sa.Column('end_date', sa.Date(), nullable=False),
+    sa.Column('status', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['project_id'], ['project.project_id'], ),
+    sa.PrimaryKeyConstraint('sprint_id')
+    )
+    op.create_table('dailyscrum',
+    sa.Column('daily_scrum_id', sa.Uuid(), nullable=False),
+    sa.Column('scrum_date', sa.Date(), nullable=False),
+    sa.Column('summary', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('sprint_id', sa.Uuid(), nullable=False),
+    sa.Column('project_id', sa.Uuid(), nullable=False),
+    sa.ForeignKeyConstraint(['project_id'], ['project.project_id'], ),
+    sa.ForeignKeyConstraint(['sprint_id'], ['sprint.sprint_id'], ),
+    sa.PrimaryKeyConstraint('daily_scrum_id')
+    )
+    op.create_table('task',
+    sa.Column('task_id', sa.Uuid(), nullable=False),
+    sa.Column('task_name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('priority', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
+    sa.Column('status', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=False),
+    sa.Column('assigned_to', sa.Uuid(), nullable=False),
+    sa.Column('sprint_id', sa.Uuid(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['assigned_to'], ['profile.profile_id'], ),
+    sa.ForeignKeyConstraint(['sprint_id'], ['sprint.sprint_id'], ),
+    sa.PrimaryKeyConstraint('task_id')
+    )
+    # ### end Alembic commands ###
+
+
+def downgrade() -> None:
+    # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('task')
+    op.drop_table('dailyscrum')
+    op.drop_table('sprint')
+    op.drop_table('profileproject')
+    op.drop_table('project')
+    op.drop_table('opportunity')
+    op.drop_index(op.f('ix_account_account_id'), table_name='account')
+    op.drop_table('account')
+    op.drop_table('profile')
+    op.drop_table('organization')
+    # ### end Alembic commands ###

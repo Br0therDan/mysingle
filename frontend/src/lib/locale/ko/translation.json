@@ -1,0 +1,340 @@
+{
+  "site": {
+    "title": "마이싱글",
+    "description": "비즈니스 전문가를 위한 도구",
+    "button": { 
+      "login": "로그인",
+      "signup": "가입하기",
+      "logout": "로그아웃",
+      "get_started": "시작하기"
+    },
+    "metadata": {
+      "title": "마이싱글",
+      "description": "마이싱글은 비즈니스 전문가를 위한 도구입니다.",
+      "pricingTitle": "가격",
+      "pricingDescription": "사용한 만큼 지불하세요",
+      "userTitle": "{userName}",
+      "userDescription": "{userName}님의 마이싱글.",
+      "notFoundTitle": "페이지를 찾을 수 없음"
+    }
+  },
+
+  "notFound": {
+    "title": "무언가가 잘못되었습니다.",
+    "description": "죄송합니다, 페이지를 찾을 수 없습니다. 홈 페이지에서 다양한 것들을 탐색하실 수 있습니다.",
+    "buttonText": "홈페이지로 돌아가기"
+  },
+  "footer": {
+    "title": "마이싱글",
+    "company": "회사",
+    "about": "소개",
+    "legal": "법적 고지",
+    "termsOfService": "이용 약관",
+    "privacyPolicy": "개인정보 보호정책",
+    "contact": "연락처",
+    "contactUs": "문의하기"
+  },
+  "common": {
+    "actions": {
+      "view": "보기",
+      "edit": "편집",
+      "delete": "삭제",
+      "create": "생성",
+      "save_changes": "변경 사항 저장"
+    },
+    "statuses": {
+      "active": "활성",
+      "inactive": "비활성"
+    },
+    "fields": {
+      "name": "이름",
+      "type": "유형",
+      "Low": "Low",
+      "Medium": "Medium",
+      "High": "High",
+      "Not Started": "Not Started",
+      "In Progress": "In Progress",
+      "Completed": "Completed",
+      "Blocked": "Blocked",
+      "Open": "Open",
+      "Closed": "Closed",
+      "Won": "Won",
+      "Lost": "Lost",
+      "Qualification": "Qualification",
+      "Proposal": "Proposal",
+      "Negotiation": "Negotiation",
+      "Closed Won": "Closed Won",
+      "Closed Lost": "Closed Lost",
+      "description": "설명",
+      "created_at": "생성일",
+      "updated_at": "수정일"
+    },
+    "no_results": "결과가 없습니다."
+  },
+  "dashboard": {
+    "title": "대시보드",
+    "description": "대시보드는 프로젝트의 진행 상황을 한눈에 볼 수 있는 곳입니다.",
+    "sidebarMenu": {
+      "dashboard": "대시보드",
+      "accounts": "계정",
+      "opportunities": "기회",
+      "projects": "프로젝트",
+      "sprints": "스프린트",
+      "tasks": "작업",
+      "daily_scrums": "데일리 스크럼",
+      "analytics": "분석",
+      "settings": "설정"
+    },
+    "sections": {
+      "accounts": "계정",
+      "account": "계정",
+      "register_account": "계정 등록",
+      "daily_scrums": "데일리 스크럼",
+      "daily_scrum": "데일리 스크럼",
+      "register_daily_scrum": "데일리 스크럼 등록",
+      "opportunities": "기회",
+      "opportunity": "기회",
+      "register_opportunity": "기회 등록",
+      "organizations": "조직",
+      "organization": "조직",
+      "register_organization": "조직 등록",
+      "profile": "프로필",
+      "register_profile": "프로필 등록",
+      "projects": "프로젝트",
+      "project": "프로젝트",
+      "register_project": "프로젝트 등록",
+      "sprints": "스프린트",
+      "sprint": "스프린트",
+      "register_sprint": "스프린트 등록",
+      "tasks": "작업",
+      "task": "작업",
+      "register_task": "작업 등록"
+    }
+  },
+  "tables": {
+    "accounts": {
+      "table_name": "계정 목록",
+      "fields": {
+        "account_name": "계정 이름",
+        "account_type": "계정 유형",
+        "owner": "소유자",
+        "created_at": "생성일",
+        "updated_at": "수정일"
+      }
+    },
+    "opportunities": {
+      "table_name": "기회 목록",
+      "fields": {
+        "opportunity_name": "기회 이름",
+        "stage": "단계",
+        "close_date": "마감일",
+        "account_name": "계정 이름",
+        "created_at": "생성일",
+        "updated_at": "수정일"
+      }
+    },
+    "projects": {
+      "table_name": "프로젝트 목록",
+      "fields": {
+        "project_name": "프로젝트 이름",
+        "description": "설명",
+        "start_date": "시작일",
+        "end_date": "종료일",
+        "status": "상태",
+        "created_at": "생성일",
+        "updated_at": "수정일"
+      }
+    },
+    "tasks": {
+      "table_name": "작업 목록",
+      "fields": {
+        "task_name": "작업 이름",
+        "priority": "우선순위",
+        "status": "상태",
+        "assigned_to": "담당자",
+        "description" : "설명",
+        "created_at": "생성일",
+        "updated_at": "수정일"
+      }
+    },
+    "organizations": {
+      "table_name": "조직 목록",
+      "fields": {
+        "org_name": "조직 이름",
+        "org_type": "조직 유형",
+        "created_at": "생성일",
+        "updated_at": "수정일"
+      }
+    },
+    "profiles": {
+      "table_name": "프로필 목록",
+      "fields": {
+        "full_name": "전체 이름",
+        "email": "이메일",
+        "job_role": "직책",
+        "is_verified": "인증됨",
+        "created_at": "생성일",
+        "updated_at": "수정일"
+      }
+    },
+    "sprints": {
+      "table_name": "스프린트 목록",
+      "fields": {
+        "sprint_name": "스프린트 이름",
+        "start_date": "시작일",
+        "end_date": "종료일",
+        "goal": "목표",
+        "status": "상태",
+        "created_at": "생성일",
+        "updated_at": "수정일"
+      }
+    },
+    "dailyScrums": {
+      "table_name": "데일리 스크럼 목록",
+      "fields": {
+        "scrum_date": "스크럼 날짜",
+        "summary": "요약",
+        "project_name": "프로젝트 이름",
+        "sprint_name": "스프린트 이름",
+        "created_at": "생성일",
+        "updated_at": "수정일"
+      }
+    }
+  },
+  "forms": {
+    "accounts": {
+      "create_new": "새 계정 생성",
+      "account_name": "계정 이름",
+      "account_type": "계정 유형",
+      "profile_id": "프로필 ID",
+      "owner": "소유자",
+      "save_changes": "변경 사항 저장",
+      "create_account": "계정 생성"
+    },
+    "organizations": {
+      "create_new": "새 조직 생성",
+      "org_name": "조직 이름",
+      "org_type": "조직 유형",
+      "save_changes": "변경 사항 저장",
+      "create_organization": "조직 생성"
+    },
+    "opportunities": {
+      "create_new": "새 기회 생성",
+      "opportunity_name": "기회 이름",
+      "stage": "단계",
+      "close_date": "마감일",
+      "save_changes": "변경 사항 저장",
+      "create_opportunity": "기회 생성",
+      "account_id": "계정 ID"
+    },
+    "profiles": {
+      "create_new": "새 프로필 생성",
+      "full_name": "전체 이름",
+      "email": "이메일",
+      "job_role": "직책",
+      "save_changes": "변경 사항 저장",
+      "create_profile": "프로필 생성"
+    },
+    "projects": {
+      "create_new": "새 프로젝트 생성",
+      "project_name": "프로젝트 이름",
+      "description": "설명",
+      "start_date": "시작일",
+      "end_date": "종료일",
+      "save_changes": "변경 사항 저장",
+      "create_project": "프로젝트 생성",
+      "account_id": "계정 ID"
+    },
+    "sprints": {
+      "create_new": "새 스프린트 생성",
+      "sprint_name": "스프린트 이름",
+      "goal": "목표",
+      "status": "상태",
+      "start_date": "시작일",
+      "end_date": "종료일",
+      "save_changes": "변경 사항 저장",
+      "create_sprint": "스프린트 생성"
+    },
+    "tasks": {
+      "create_new": "새 작업 생성",
+      "assigned_to": "담당자",
+      "task_name": "작업 이름",
+      "priority": "우선순위",
+      "status": "상태",
+      "save_changes": "변경 사항 저장",
+      "create_task": "작업 생성",
+      "sprint_id": "스프린트 ID",
+      "description": "설명"
+    },
+    "dailyScrums": {
+      "create_new": "새 데일리 스크럼 생성",
+      "scrum_date": "스크럼 날짜",
+      "summary": "요약",
+      "save_changes": "변경 사항 저장",
+      "create_daily_scrum": "데일리 스크럼 생성",
+      "project_id": "프로젝트 ID",
+      "sprint_id": "스프린트 ID"
+    }
+
+  },
+  "button": {
+    "columns": "열",
+    "export": "내보내기",
+    "createAccounts": "새 계정 생성",
+    "createOpportunities": "새 기회 생성",
+    "createProjects": "새 프로젝트 생성",
+    "createSprints": "새 스프린트 생성",
+    "createTasks": "새 작업 생성",
+    "createDailyScrums": "새 데일리 스크럼 생성",
+    "createProfiles": "새 프로필 생성",
+    "createOrganizations": "새 조직 생성"
+  },
+  "alert_messages": {
+    "fetch_error": "데이터를 가져오지 못했습니다.",
+    "update_error": "데이터를 업데이트하지 못했습니다."
+  },
+  "breadcrumb": {
+    "dashboard": "대시보드",
+    "accounts": "계정",
+    "opportunities": "기회",
+    "projects": "프로젝트",
+    "sprints": "스프린트",
+    "tasks": "작업",
+    "daily_scrum": "데일리 스크럼",
+    "organizations": "조직",
+    "profiles": "프로필",
+    "settings": "설정",
+    "analytics": "분석"
+  },
+  "auth": {
+    "signin": {
+      "title": "로그인",
+      "description": "계정에 로그인하세요.",
+      "email": "이메일",
+      "password": "비밀번호",
+      "signin": "로그인",
+      "forgot_password": "비밀번호를 잊으셨나요?",
+      "no_account": "계정이 없으신가요?",
+      "signup": "가입하기"
+    },
+    "signup": {
+      "title": "가입하기",
+      "description": "새 계정을 만드세요.",
+      "full_name": "전체 이름",
+      "email": "이메일",
+      "password": "비밀번호",
+      "confirm_password": "비밀번호 확인",
+      "signup": "가입하기",
+      "already_have_account": "이미 계정이 있으신가요?",
+      "signin": "로그인",
+      "policy": "가입하면 {siteTitle}의 {termsOfService} 및 {privacyPolicy}에 동의하게 됩니다."
+    },
+    "signout":{
+      "signout": "로그아웃"
+    },
+    "social": {
+      "kakao": "카카오 로그인",
+      "google": "구글 로그인"
+    }
+  }
+}

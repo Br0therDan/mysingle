@@ -1,0 +1,22 @@
+# Python 관련
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+env/
+
+# Node.js 관련
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+out/
+
+# Docker 관련
+*.env
+*.log
+docker-compose.override.yml
+.dockerignore
+
+# VSCode 관련
+.vscode/

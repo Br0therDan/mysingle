@@ -1,0 +1,38 @@
+# docker-compose.yml
+version: '3.7'
+
+services:
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+
+  db:
+    image: supabase/postgres:latest
+    container_name: supabase-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Goaltocutby72
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:

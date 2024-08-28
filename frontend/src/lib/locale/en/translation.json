@@ -1,0 +1,347 @@
+{
+  "site": {
+    "title": "MySingle",
+    "description": "The one tool for business professionals",
+    "button": { 
+      "login": "Login",
+      "signup": "Sign Up",
+      "logout": "Logout",
+      "get_started": "Get Started"
+    },
+    "metadata": {
+      "title": "MySingle",
+      "description": "The one tool for business professionals",
+      "blogTitle": "Blog",
+      "pricingTitle": "Pricing",
+      "pricingDescription": "Pay as you go",
+      "userTitle": "{userName}",
+      "userDescription": "{userName} on MySingle.",
+      "notFoundTitle": "not found"
+    }
+  },
+
+
+  "notFound": {
+    "title": "Something's missing.",
+    "description": "Sorry, we can't find that page. You'll find lots to explore on the home page.",
+    "buttonText": "Back to Homepage"
+  },
+
+  
+  "footer": {
+    "title": "MySingle",
+    "company": "Company",
+    "about": "About",
+    "legal": "Legal",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "contact": "Contact",
+    "contactUs": "Contact Us"
+  },
+  
+  "common": {
+    "actions": {
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete",
+      "create": "Create",
+      "save_changes": "Save Changes"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "fields": {
+      "name": "Name",
+      "type": "Type",
+      "Low": "Low",
+      "Medium": "Medium",
+      "High": "High",
+      "Not Started": "Not Started",
+      "In Progress": "In Progress",
+      "Completed": "Completed",
+      "Blocked": "Blocked",
+      "Open": "Open",
+      "Closed": "Closed",
+      "Won": "Won",
+      "Lost": "Lost",
+      "Qualification": "Qualification",
+      "Proposal": "Proposal",
+      "Negotiation": "Negotiation",
+      "Closed Won": "Closed Won",
+      "Closed Lost": "Closed Lost",
+      "description": "Description",
+      "created_at": "Created At",
+      "updated_at": "Updated At"
+    },
+    "no_results": "No results."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Dashboard is where you can see the progress of your projects at a glance.",
+    "sidebarMenu": {
+      "dashboard": "Dashboard",
+      "accounts": "Accounts",
+      "opportunities": "Opportunities",
+      "projects": "Projects",
+      "sprints": "Sprints",
+      "tasks": "Tasks",
+      "daily_scrums": "Daily Scrum",
+      "analytics": "Analytics",
+      "settings": "Settings"
+    },
+    "sections": {
+      "accounts": "Accounts",
+      "account": "Account",
+      "register_account": "Register Account",
+      "daily_scrums": "Daily Scrums",
+      "daily_scrum": "Daily Scrum",
+      "register_daily_scrum": "Register Daily Scrum",
+      "opportunities": "Opportunities",
+      "opportunity": "Opportunity",
+      "register_opportunity": "Register Opportunity",
+      "organizations": "Organizations",
+      "organization": "Organization",
+      "register_organization": "Register Organization",
+      "profile": "Profile",
+      "register_profile": "Register Profile",
+      "projects": "Projects",
+      "project": "Project",
+      "register_project": "Register Project",
+      "sprints": "Sprints",
+      "sprint": "Sprint",
+      "register_sprint": "Register Sprint",
+      "tasks": "Tasks",
+      "task": "Task",
+      "register_task": "Register Task"
+    }
+  },
+  "tables": {
+    "accounts": {
+      "table_name": "Account List",
+      "fields": {
+        "account_name": "Account Name",
+        "account_type": "Account Type",
+        "owner": "Owner",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+      }
+    },
+    "opportunities": {
+      "table_name": "Opportunity List",
+      "fields": {
+        "opportunity_name": "Opportunity Name",
+        "stage": "Stage",
+        "close_date": "Close Date",
+        "account_name": "Account Name",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+      }
+    },
+    "projects": {
+      "table_name": "Project List",
+      "fields": {
+        "project_name": "Project Name",
+        "description": "Description",
+        "start_date": "Start Date",
+        "end_date": "End Date",
+        "status": "Status",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+      }
+    },
+    "tasks": {
+      "table_name": "Task List",
+      "fields": {
+        "task_name": "Task Name",
+        "priority": "Priority",
+        "status": "Status",
+        "description": "Description",
+        "assigned_to": "Assigned To",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+      }
+    },
+    "organizations": {
+      "table_name": "Organization List",
+      "fields": {
+        "org_name": "Organization Name",
+        "org_type": "Organization Type",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+      }
+    },
+    "profiles": {
+      "table_name": "Profile List",
+      "fields": {
+        "full_name": "Full Name",
+        "email": "Email",
+        "job_role": "Job Role",
+        "is_verified": "Verified",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+      }
+    },
+    "sprints": {
+      "table_name": "Sprint List",
+      "fields": {
+        "sprint_name": "Sprint Name",
+        "start_date": "Start Date",
+        "end_date": "End Date",
+        "goal": "Goal",
+        "status": "Status",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+      }
+    },
+    "daily_scrums": {
+      "table_name": "Daily Scrum List",
+      "fields": {
+        "scrum_date": "Scrum Date",
+        "summary": "Summary",
+        "project_name": "Project Name",
+        "sprint_name": "Sprint Name",
+        "created_at": "Created At",
+        "updated_at": "Updated At"
+      }
+    }
+  },
+  "forms": {
+    "accounts": {
+      "create_new": "Create New Account",
+      "account_name": "Account Name",
+      "account_type": "Account Type",
+      "profile_id": "Profile ID",
+      "owner": "Owner",
+      "save_changes": "Save Changes",
+      "create_account": "Create Account",
+      "created_at": "Created At",
+      "updated_at": "Updated At"
+    },
+    "organizates": {
+      "create_new": "Create New Organization",
+      "org_name": "Organization Name",
+      "org_type": "Organization Type",
+      "save_changes": "Save Changes",
+      "create_organization": "Create Organization",
+      "created_at": "Created At",
+      "updated_at": "Updated At"
+    },
+    "opportunities": {
+      "create_new": "Create New Opportunity",
+      "opportunity_name": "Opportunity Name",
+      "stage": "Stage",
+      "close_date": "Close Date",
+      "save_changes": "Save Changes",
+      "create_opportunity": "Create Opportunity",
+      "created_at": "Created At",
+      "updated_at": "Updated At"
+    },
+    "profiles": {
+      "create_new": "Create New Profile",
+      "full_name": "Full Name",
+      "email": "Email",
+      "job_role": "Job Role",
+      "save_changes": "Save Changes",
+      "create_profile": "Create Profile",
+      "created_at": "Created At",
+      "updated_at": "Updated At"
+    },
+    "projects": {
+      "create_new": "Create New Project",
+      "project_name": "Project Name",
+      "description": "Description",
+      "start_date": "Start Date",
+      "end_date": "End Date",
+      "save_changes": "Save Changes",
+      "create_project": "Create Project",
+      "created_at": "Created At",
+      "updated_at": "Updated At"
+    },
+    "sprints": {
+      "create_new": "Create New Sprint",
+      "sprint_name": "Sprint Name",
+      "goal": "Goal",
+      "status": "Status",
+      "save_changes": "Save Changes",
+      "create_sprint": "Create Sprint",
+      "created_at": "Created At",
+      "updated_at": "Updated At"
+
+    },
+    "tasks": {
+      "create_new": "Create New Task",
+      "task_name": "Task Name",
+      "priority": "Priority",
+      "status": "Status",
+      "save_changes": "Save Changes",
+      "create_task": "Create Task",
+      "created_at": "Created At",
+      "updated_at": "Updated At"
+
+    }
+  },
+  "button": {
+    "columns": "Columns",
+    "export": "Export",
+    "createAccounts": "Create Account",
+    "createOpportunities": "Create Opportunity",
+    "createProjects": "Create Project",
+    "createSprints": "Create Sprint",
+    "createTasks": "Create Task",
+    "createDailyScrums": "Create Daily Scrum",
+    "createProfiles": "Create Profile",
+    "createOrganizations": "Create Organization"
+  },
+  "alert_messages": {
+    "fetch_error": "Failed to fetch data.",
+    "update_error": "Failed to update data."
+  },
+ 
+  "breadcrumb": {
+    "dashboard": "Dashboard",
+    "accounts": "Accounts",
+    "opportunities": "Opportunities",
+    "projects": "Projects",
+    "sprints": "Sprints",
+    "tasks": "Tasks",
+    "daily_scrum": "Daily Scrum",
+    "organizations": "Organizations",
+    "profiles": "Profiles",
+    "settings": "Settings",
+    "analytics": "Analytics"
+  },
+  "auth": {
+    "signin": {
+      "title": "Sign in",
+      "description": "Log in to your account.",
+      "email": "Email",
+      "password": "Password",
+      "signin": "Sign in",
+      "forgot_password": "Forgot password?",
+      "no_account": "Don't have an account?",
+      "signup": "Sign up"
+    },
+    "signup": {
+      "title": "Sign up",
+      "description": "Create an account.",
+      "full_name": "Full Name",
+      "email": "Email",
+      "password": "Password",
+      "confirm_password": "Confirm Password",
+      "signup": "Sign up",
+      "already_have_account": "Already have an account?",
+      "signin": "Sign in",
+      "success": "Sign up successful. Please check your email to verify your account.",
+      "policy" : "By signing up, you agree to our Terms of Service and Privacy Policy."
+    },
+    "signout":{
+      "signout": "Sign out"
+
+    },
+    "social": {
+      "kakao": "Sign in with Kakao",
+      "google": "Sign in with Google"
+    }
+  }
+}
